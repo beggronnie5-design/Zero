@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ZERO</title>
+<title>ZERO AI</title>
 
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
@@ -51,6 +53,7 @@ header {
   margin: 10px 0;
   border-radius: 15px;
   max-width: 85%;
+  line-height: 1.4;
 }
 
 .zero {
@@ -66,6 +69,7 @@ header {
 .controls {
   padding: 15px;
   border-top: 1px solid #222;
+  background: #080808;
 }
 
 .row {
@@ -81,6 +85,7 @@ input {
   border: 1px solid #333;
   border-radius: 12px;
   font-size: 16px;
+  outline: none;
 }
 
 button {
@@ -88,6 +93,7 @@ button {
   border: 0;
   border-radius: 12px;
   font-weight: bold;
+  cursor: pointer;
 }
 
 .send {
@@ -101,6 +107,10 @@ button {
   background: #111820;
   color: white;
   border: 1px solid #333;
+}
+
+button:active {
+  transform: scale(0.97);
 }
 </style>
 </head>
@@ -116,71 +126,150 @@ button {
 
 <div id="chat">
   <div class="message zero">
-    Hello. I am ZERO.
+    Hello. I am ZERO. What's on your mind?
   </div>
 </div>
 
 <div class="controls">
+
   <div class="row">
-    <input id="input" placeholder="Talk to ZERO...">
+    <input
+      id="input"
+      type="text"
+      placeholder="Talk to ZERO..."
+      onkeydown="if(event.key === 'Enter') send()"
+    >
+
     <button class="send" onclick="send()">SEND</button>
   </div>
 
-  <button class="mic" onclick="listen()">🎙️ TALK TO ZERO</button>
+  <button class="mic" onclick="listen()">
+    🎙️ TALK TO ZERO
+  </button>
+
 </div>
 
 </div>
 
 <script>
+
+const BRAIN_URL = "https://zero-2ytu.onrender.com/chat";
+
 function addMessage(text, type) {
+
   const chat = document.getElementById("chat");
+
   const message = document.createElement("div");
 
   message.className = "message " + type;
+
   message.textContent = text;
 
   chat.appendChild(message);
+
   chat.scrollTop = chat.scrollHeight;
 }
 
-function send() {
+
+async function send() {
+
   const input = document.getElementById("input");
+
   const text = input.value.trim();
 
   if (!text) return;
 
   addMessage(text, "user");
+
   input.value = "";
 
-  setTimeout(() => {
-    addMessage("I'm ready. My AI brain will be connected next.", "zero");
-  }, 400);
+  addMessage("Thinking...", "zero");
+
+  try {
+
+    const response = await fetch(BRAIN_URL, {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        message: text
+      })
+
+    });
+
+    if (!response.ok) {
+      throw new Error("Server error");
+    }
+
+    const data = await response.json();
+
+    const messages =
+      document.querySelectorAll(".message.zero");
+
+    const thinking =
+      messages[messages.length - 1];
+
+    thinking.textContent =
+      data.reply || "I didn't get a response.";
+
+  } catch (error) {
+
+    const messages =
+      document.querySelectorAll(".message.zero");
+
+    const thinking =
+      messages[messages.length - 1];
+
+    thinking.textContent =
+      "I can't connect to my brain right now.";
+
+    console.error(error);
+  }
 }
 
+
 function listen() {
+
   const SpeechRecognition =
     window.SpeechRecognition ||
     window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    alert("Voice recognition isn't supported here.");
+
+    alert(
+      "Voice recognition isn't supported in this browser."
+    );
+
     return;
   }
 
-  const recognition = new SpeechRecognition();
+  const recognition =
+    new SpeechRecognition();
 
   recognition.lang = "en-GB";
+
   recognition.continuous = false;
 
+  recognition.interimResults = false;
+
+  recognition.onresult =
+    function(event) {
+
+      const text =
+        event.results[0][0].transcript;
+
+      document.getElementById("input").value = text;
+
+      send();
+    };
+
   recognition.start();
-
-  recognition.onresult = function(event) {
-    document.getElementById("input").value =
-      event.results[0][0].transcript;
-
-    send();
-  };
 }
+
 </script>
 
 </body>
